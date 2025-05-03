@@ -1,0 +1,14 @@
+[package]
+name = "cryprice"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.98"
+chrono = "0.4.41"
+hyperliquid_rust_sdk = "0.5.0"
+reqwest = "0.12.15"
+tokio = { version = "1.44.2", features = ["full"] }
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"
