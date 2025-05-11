@@ -1,75 +1,58 @@
-#![allow(dead_code, unused)] // TODO: Remove
+mod utils;
 
-use anyhow::Result;
-use chrono::{DateTime, Utc};
-use coin::Coin;
-use hyperliquid_rust_sdk::{BaseUrl, CandlesSnapshotResponse, InfoClient};
+use anyhow::{Context, Result};
+use hyperliquid_rust_sdk::{BaseUrl, InfoClient};
+use std::collections::HashMap;
+pub use utils::*;
 
-mod coin;
-
-struct Client {
+pub struct CryptoClient {
     hl_client: InfoClient,
 }
 
-impl Client {
-    async fn build() -> Result<Self> {
+impl CryptoClient {
+    pub async fn build() -> Result<Self> {
         let hl_client = InfoClient::new(None, Some(BaseUrl::Mainnet)).await?;
         Ok(Self { hl_client })
     }
 
-    async fn fetch_candles_snapshot(&self, coin: Coin) -> Result<Vec<CandlesSnapshotResponse>> {
-        let now = chrono::Utc::now().timestamp_millis() as u64;
-        let yesterday = now - 24 * 60 * 60 * 1000;
+    pub async fn fetch_perp_acct_value(&self, address: &str) -> Result<f64> {
+        let res = self.hl_client.user_state(address.parse()?).await?;
 
-        let candles = self
-            .hl_client
-            .candles_snapshot(coin.to_string(), "1m".to_string(), yesterday, now)
-            .await?;
+        let acct_val = res.cross_margin_summary.account_value; // account value in USD
+        let acct_val = acct_val.parse::<f64>()?;
 
-        Ok(candles)
+        Ok(acct_val)
     }
-}
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use anyhow::{Context as _, anyhow};
-    use chrono::{DateTime, Utc};
-    use pretty_assertions::assert_eq;
-
-    #[tokio::test]
-    async fn test() -> Result<()> {
-        let client = Client::build().await?;
-
-        let mids = client.hl_client.all_mids().await?;
-        println!("{:#?}", mids);
-
-        let candles = client.fetch_candles_snapshot(Coin::Btc).await?;
-
-        let (first_candle, last_candle) = candles
-            .first()
-            .and_then(|fst| candles.last().map(|lst| (fst, lst)))
-            .context("No candles found")?;
-
-        // Convert timestamps to DateTime and print them
-        let first_date = DateTime::<Utc>::from_timestamp_millis(first_candle.time_open as i64)
-            .context("Invalid timestamp")?;
-        let last_date = DateTime::<Utc>::from_timestamp_millis(last_candle.time_open as i64)
-            .context("Invalid timestamp")?;
-
-        println!(
-            "First candle time: {} -- Price: {}",
-            first_date.format("%Y-%m-%d %H:%M:%S UTC"),
-            first_candle.open
+    pub async fn fetch_spot_acct_value(&self, address: &str) -> Result<f64> {
+        let (res, mids) = tokio::join!(
+            self.hl_client.user_token_balances(address.parse()?),
+            self.get_all_mids()
         );
-        println!(
-            "Last candle time: {} -- Price: {}",
-            last_date.format("%Y-%m-%d %H:%M:%S UTC"),
-            last_candle.open
-        );
+        let mids = mids?;
 
-        assert!(first_candle.time_open < last_candle.time_open);
+        let mut acct_val = 0.0; // USD
 
-        Ok(())
+        for token_bal in res?.balances {
+            if token_bal.coin == "USDC" {
+                acct_val += token_bal.total.parse::<f64>()?;
+                continue;
+            }
+            let token_balance = token_bal.total.parse::<f64>()?;
+            let token_price = mids
+                .get(&token_bal.coin)
+                .with_context(|| format!("Token {} not found in mids", token_bal.coin))
+                .and_then(|p| {
+                    p.parse::<f64>().context("Failed to parse token price into a f64")
+                })?;
+            acct_val += token_balance * token_price;
+        }
+
+        Ok(acct_val)
+    }
+
+    async fn get_all_mids(&self) -> Result<HashMap<String, String>> {
+        let res = self.hl_client.all_mids().await?;
+        Ok(res)
     }
 }

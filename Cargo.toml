@@ -5,10 +5,9 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.98"
-chrono = "0.4.41"
+colored = "3.0.0"
 hyperliquid_rust_sdk = "0.5.0"
-reqwest = "0.12.15"
+log = "0.4.27"
+pretty-table = "0.1.3"
+thin-logger = "0.1.0"
 tokio = { version = "1.44.2", features = ["full"] }
-
-[dev-dependencies]
-pretty_assertions = "1.4.1"
