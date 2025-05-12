@@ -1,5 +1,5 @@
+use super::USER_ADDRESS;
 use colored::*;
-pub const USER_ADDRESS: &str = "0x53Dee653941345fC1241444F7b1E7dA3beC73Aab";
 
 // TODO: Migrate this to "pretty_table" crate
 pub fn print_table(perp: f64, spot: f64, total: f64, pnl: f64, pnl_pct: f64) {

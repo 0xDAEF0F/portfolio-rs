@@ -1,0 +1,22 @@
+meta {
+  name: Retrieve user's perpetuals account summary
+  type: http
+  seq: 3
+}
+
+post {
+  url: https://api.hyperliquid.xyz/info
+  body: json
+  auth: inherit
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "type": "clearinghouseState",
+    "user": {{addr}}
+  }
+}

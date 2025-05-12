@@ -1,9 +1,7 @@
 use anyhow::Result;
-use cryprice::{CryptoClient, USER_ADDRESS, print_table};
+use cryprice::*;
 use log::LevelFilter;
 use thin_logger::ThinLogger;
-
-const INITIAL_BALANCE: f64 = 47_300.0;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -14,8 +12,11 @@ async fn main() -> Result<()> {
 
     let client = CryptoClient::build().await?;
 
-    let perp = client.fetch_perp_acct_value(USER_ADDRESS).await?;
-    let spot = client.fetch_spot_acct_value(USER_ADDRESS).await?;
+    let (perp, spot, fr) = tokio::try_join!(
+        client.fetch_perp_acct_value(),
+        client.fetch_spot_acct_value(),
+        client.calculate_fr_open_pos()
+    )?;
 
     let total = perp + spot;
 
@@ -23,6 +24,8 @@ async fn main() -> Result<()> {
     let pnl_pct = pnl / INITIAL_BALANCE * 100.0;
 
     print_table(perp, spot, total, pnl, pnl_pct);
+
+    log::info!("fr: {}", fr);
 
     Ok(())
 }

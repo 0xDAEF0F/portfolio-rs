@@ -1,4 +1,4 @@
 # Todos
 
-- Add funding rates balance to the table
-- Get the funding rates???
+- [ ] Get the funding rates???
+- [x] Add funding rates balance to the table
