@@ -578,6 +578,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "colored",
+ "env-logger-wrapper",
  "env_logger 0.11.8",
  "ethers",
  "hyperliquid_rust_sdk",
@@ -585,7 +586,6 @@ dependencies = [
  "pretty-table",
  "serde",
  "serde_json",
- "thin-logger",
  "tokio",
 ]
 
@@ -809,6 +809,18 @@ dependencies = [
  "serde",
  "sha3",
  "zeroize",
+]
+
+[[package]]
+name = "env-logger-wrapper"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "beae795e1fbdb9ed635a5a9419803c827447400f93e2e4ad416f1c298047982e"
+dependencies = [
+ "chrono",
+ "colored",
+ "env_logger 0.11.8",
+ "log",
 ]
 
 [[package]]
@@ -3469,19 +3481,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "06794f8f6c5c898b3275aebefa6b8a1cb24cd2c6c79397ab15774837a0bc5755"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "thin-logger"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "04c8c90ea91f1a7a477fa84642de64373516a523fc475812c23f9cf3cc082142"
-dependencies = [
- "anyhow",
- "chrono",
- "colored",
- "env_logger 0.11.8",
- "log",
 ]
 
 [[package]]
