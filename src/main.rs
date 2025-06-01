@@ -1,11 +1,10 @@
 use anyhow::Result;
 use cryprice::*;
-use env_logger_wrapper::new_builder;
-use log::LevelFilter;
+use thin_logger::log::{self, LevelFilter};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-	new_builder(LevelFilter::Debug).init();
+	thin_logger::build(Some(LevelFilter::Info)).init();
 
 	let client = CryptoClient::build().await?;
 
