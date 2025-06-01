@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 anyhow = "1.0.98"
+clap = { version = "4.5.39", features = ["derive"] }
 colored = "3.0.0"
 ethers = "2.0.14"
 hyperliquid_rust_sdk = "0.5.0"
