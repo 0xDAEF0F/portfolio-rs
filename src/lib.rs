@@ -1,14 +1,24 @@
 mod utils;
 
 use anyhow::{Context, Result};
+use chrono::Duration;
 use ethers::types::Address;
 use hyperliquid_rust_sdk::{BaseUrl, InfoClient};
+use serde::Serialize;
 use serde_json::{Value, json};
 use std::{collections::HashMap, ops::Neg as _};
 pub use utils::*;
 
 pub const USER_ADDRESS: &str = "0x53Dee653941345fC1241444F7b1E7dA3beC73Aab";
 pub const INITIAL_BALANCE: f64 = 47_300.0;
+
+#[derive(Debug, Serialize)]
+pub struct CurrencyInfo {
+	pub symbol: String,
+	pub price: f64,
+	pub one_day_change: f64,
+	pub one_day_change_pct: f64,
+}
 
 pub struct CryptoClient {
 	user_address: Address,
@@ -99,5 +109,95 @@ impl CryptoClient {
 		}
 
 		Ok(cum_funding.neg())
+	}
+
+	pub async fn fetch_currency_info(
+		&self,
+		names: Vec<String>,
+	) -> Result<Vec<CurrencyInfo>> {
+		let mid_prices = self.get_all_mids().await?;
+
+		// with prices
+		let interested_coins: Vec<(String, &str)> = names
+			.into_iter()
+			.filter_map(|name| {
+				mid_prices
+					.get(&name.to_ascii_uppercase())
+					.map(|price| (name, price.as_str()))
+			})
+			.collect();
+
+		let mut futures = Vec::new();
+		for (name, _) in interested_coins {
+			futures.push(self.fetch_coin_snapshot(name));
+		}
+
+		let results = futures::future::join_all(futures).await;
+		let results = results.into_iter().collect::<Result<Vec<_>>>()?;
+
+		let mut currency_info = Vec::new();
+		for (name, price, price_change, pct_change) in results.into_iter() {
+			currency_info.push(CurrencyInfo {
+				symbol: name,
+				price,
+				one_day_change: price_change,
+				one_day_change_pct: pct_change,
+			});
+		}
+
+		Ok(currency_info)
+	}
+
+	/// Returns (name, price, price_change, pct_change)
+	pub async fn fetch_coin_snapshot(
+		&self,
+		name: String,
+	) -> Result<(String, f64, f64, f64)> {
+		let now = chrono::Utc::now();
+
+		let res = self
+			.hl_client
+			.candles_snapshot(
+				name.clone(),
+				"1m".to_owned(),
+				(now - Duration::days(1)).timestamp_millis() as u64,
+				now.timestamp_millis() as u64,
+			)
+			.await?;
+
+		let fst_price = res
+			.first()
+			.context("No first candle")?
+			.close
+			.parse::<f64>()?;
+
+		let lst_price = res.last().context("No last candle")?.close.parse::<f64>()?;
+
+		let price_change = lst_price - fst_price;
+		let pct_change = price_change / fst_price * 100.0;
+
+		Ok((name, fst_price, price_change, pct_change))
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::*;
+
+	#[tokio::test]
+	async fn test_fetch_currency_info() {
+		let client = CryptoClient::build().await.unwrap();
+		let currency_info = client
+			.fetch_currency_info(vec![
+				"BTC".to_owned(),
+				"WIF".to_owned(),
+				"SOL".to_owned(),
+				"ETH".to_owned(),
+				"FARTCOIN".to_owned(),
+				"POO".to_owned(),
+			])
+			.await
+			.unwrap();
+		println!("{currency_info:#?}");
 	}
 }

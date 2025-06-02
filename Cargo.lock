@@ -617,9 +617,11 @@ name = "cryprice"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
  "colored",
  "ethers",
+ "futures",
  "hyperliquid_rust_sdk",
  "pretty-table",
  "serde",
