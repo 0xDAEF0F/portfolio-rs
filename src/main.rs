@@ -19,9 +19,9 @@ async fn main() -> Result<()> {
 	let pnl = total - INITIAL_BALANCE;
 	let pnl_pct = pnl / INITIAL_BALANCE * 100.0;
 
-	print_table(perp, spot, total, pnl, pnl_pct);
+	log::info!("fr: {fr}");
 
-	log::info!("fr: {}", fr);
+	print_table(perp, spot, total, pnl, pnl_pct);
 
 	Ok(())
 }
