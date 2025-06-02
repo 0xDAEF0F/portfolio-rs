@@ -121,9 +121,10 @@ impl CryptoClient {
 		let interested_coins: Vec<(String, &str)> = names
 			.into_iter()
 			.filter_map(|name| {
+				let to_upper = name.to_ascii_uppercase();
 				mid_prices
-					.get(&name.to_ascii_uppercase())
-					.map(|price| (name, price.as_str()))
+					.get(&to_upper)
+					.map(|price| (to_upper, price.as_str()))
 			})
 			.collect();
 
