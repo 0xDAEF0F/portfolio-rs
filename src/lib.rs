@@ -172,7 +172,7 @@ impl CryptoClient {
 
 		Ok(CurrencyInfo {
 			symbol,
-			price: fst_price,
+			price: lst_price,
 			one_day_change: price_change,
 			one_day_change_pct: pct_change,
 		})
