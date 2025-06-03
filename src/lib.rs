@@ -3,6 +3,7 @@ mod utils;
 use anyhow::{Context, Result};
 use chrono::Duration;
 use ethers::types::Address;
+use futures::future;
 use hyperliquid_rust_sdk::{BaseUrl, InfoClient};
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -113,53 +114,45 @@ impl CryptoClient {
 
 	pub async fn fetch_currency_info(
 		&self,
-		names: Vec<String>,
+		pairs: HashMap<String, u8>,
 	) -> Result<Vec<CurrencyInfo>> {
-		let mid_prices = self.get_all_mids().await?;
+		let futs = pairs
+			.keys()
+			.map(|symbol| self.fetch_coin_snapshot(symbol.clone()));
 
-		// with prices
-		let interested_coins: Vec<(String, &str)> = names
+		let results: Vec<CurrencyInfo> = future::join_all(futs)
+			.await
 			.into_iter()
-			.filter_map(|name| {
-				let to_upper = name.to_ascii_uppercase();
-				mid_prices
-					.get(&to_upper)
-					.map(|price| (to_upper, price.as_str()))
-			})
-			.collect();
+			.collect::<Result<Vec<_>>>()?;
 
-		let mut futures = Vec::new();
-		for (name, _) in interested_coins {
-			futures.push(self.fetch_coin_snapshot(name));
-		}
+		let mut results_with_decimals = vec![];
 
-		let results = futures::future::join_all(futures).await;
-		let results = results.into_iter().collect::<Result<Vec<_>>>()?;
-
-		let mut currency_info = Vec::new();
-		for (name, price, price_change, pct_change) in results.into_iter() {
-			currency_info.push(CurrencyInfo {
-				symbol: name,
-				price,
-				one_day_change: price_change,
-				one_day_change_pct: pct_change,
+		for info in results.into_iter() {
+			results_with_decimals.push(CurrencyInfo {
+				price: round_to_n_decimals(info.price, pairs[&info.symbol]),
+				one_day_change: round_to_n_decimals(
+					info.one_day_change,
+					pairs[&info.symbol],
+				),
+				one_day_change_pct: round_to_n_decimals(
+					info.one_day_change_pct,
+					pairs[&info.symbol],
+				),
+				symbol: info.symbol,
 			});
 		}
 
-		Ok(currency_info)
+		Ok(results_with_decimals)
 	}
 
-	/// Returns (name, price, price_change, pct_change)
-	pub async fn fetch_coin_snapshot(
-		&self,
-		name: String,
-	) -> Result<(String, f64, f64, f64)> {
+	// Returns (name, price, price_change, pct_change)
+	async fn fetch_coin_snapshot(&self, symbol: String) -> Result<CurrencyInfo> {
 		let now = chrono::Utc::now();
 
 		let res = self
 			.hl_client
 			.candles_snapshot(
-				name.clone(),
+				symbol.clone(),
 				"1m".to_owned(),
 				(now - Duration::days(1)).timestamp_millis() as u64,
 				now.timestamp_millis() as u64,
@@ -177,7 +170,12 @@ impl CryptoClient {
 		let price_change = lst_price - fst_price;
 		let pct_change = price_change / fst_price * 100.0;
 
-		Ok((name, fst_price, price_change, pct_change))
+		Ok(CurrencyInfo {
+			symbol,
+			price: fst_price,
+			one_day_change: price_change,
+			one_day_change_pct: pct_change,
+		})
 	}
 }
 
@@ -189,16 +187,29 @@ mod tests {
 	async fn test_fetch_currency_info() {
 		let client = CryptoClient::build().await.unwrap();
 		let currency_info = client
-			.fetch_currency_info(vec![
-				"BTC".to_owned(),
-				"WIF".to_owned(),
-				"SOL".to_owned(),
-				"ETH".to_owned(),
-				"FARTCOIN".to_owned(),
-				"POO".to_owned(),
-			])
+			.fetch_currency_info(
+				[
+					("BTC".to_owned(), 0),
+					("WIF".to_owned(), 0),
+					("SOL".to_owned(), 0),
+					("ETH".to_owned(), 0),
+					("FARTCOIN".to_owned(), 0),
+					("POO".to_owned(), 0),
+				]
+				.into(),
+			)
 			.await
 			.unwrap();
+
 		println!("{currency_info:#?}");
+	}
+
+	#[test]
+	fn test_round_to_n_decimals() {
+		assert_eq!(round_to_n_decimals(1.23456789, 2), 1.23);
+		assert_eq!(round_to_n_decimals(1.28456789, 1), 1.3);
+		assert_eq!(round_to_n_decimals(1.23456789, 3), 1.235);
+		assert_eq!(round_to_n_decimals(1.23456789, 4), 1.2346);
+		assert_eq!(round_to_n_decimals(1.23456789, 5), 1.23457);
 	}
 }

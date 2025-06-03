@@ -1,6 +1,11 @@
 use super::USER_ADDRESS;
 use colored::*;
 
+pub fn round_to_n_decimals(number: f64, n: u8) -> f64 {
+	let factor = 10f64.powi(n as i32);
+	(number * factor).round() / factor
+}
+
 // TODO: Migrate this to "pretty_table" crate
 pub fn print_table(perp: f64, spot: f64, total: f64, pnl: f64, pnl_pct: f64) {
 	println!(
@@ -18,7 +23,7 @@ pub fn print_table(perp: f64, spot: f64, total: f64, pnl: f64, pnl_pct: f64) {
 		"╚═══════════════════════════════════════════╝".bright_yellow()
 	);
 
-	println!("{}", format!("\nAddress: {}", USER_ADDRESS).bright_yellow());
+	println!("{}", format!("\nAddress: {USER_ADDRESS}").bright_yellow());
 
 	// Create table with fixed widths for better alignment
 	let metric_width = 20;
@@ -69,7 +74,7 @@ pub fn print_table(perp: f64, spot: f64, total: f64, pnl: f64, pnl_pct: f64) {
 	println!(
 		"│ {:<width$} │ {:>width2$} │",
 		"Total Value".bright_green().bold(),
-		format!("${:.2}", total).bright_green().bold(),
+		format!("${total:.2}").bright_green().bold(),
 		width = metric_width - 2,
 		width2 = value_width - 2
 	);
@@ -82,9 +87,9 @@ pub fn print_table(perp: f64, spot: f64, total: f64, pnl: f64, pnl_pct: f64) {
 	};
 
 	let pnl_value = if pnl >= 0.0 {
-		format!("${:.2}", pnl).green().bold()
+		format!("${pnl:.2}").green().bold()
 	} else {
-		format!("${:.2}", pnl).red().bold()
+		format!("${pnl:.2}").red().bold()
 	};
 
 	println!(
@@ -103,9 +108,9 @@ pub fn print_table(perp: f64, spot: f64, total: f64, pnl: f64, pnl_pct: f64) {
 	};
 
 	let pnl_pct_value = if pnl_pct >= 0.0 {
-		format!("{:.2}%", pnl_pct).green().bold()
+		format!("{pnl_pct:.2}%").green().bold()
 	} else {
-		format!("{:.2}%", pnl_pct).red().bold()
+		format!("{pnl_pct:.2}%").red().bold()
 	};
 
 	println!(
