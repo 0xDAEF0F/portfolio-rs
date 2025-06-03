@@ -4,7 +4,7 @@ use cryprice::CryptoClient;
 use std::collections::HashMap;
 
 #[derive(Parser)]
-#[command(version, about, long_about = None)]
+#[command(version, about, long_about = None, styles = get_styles())]
 struct Cli {
 	#[command(subcommand)]
 	command: Commands,
@@ -59,4 +59,23 @@ async fn main() -> Result<()> {
 	}
 
 	Ok(())
+}
+
+pub fn get_styles() -> clap::builder::Styles {
+	clap::builder::Styles::styled()
+		.usage(
+			clap::builder::styling::AnsiColor::Yellow
+				.on_default()
+				.bold(),
+		)
+		.header(
+			clap::builder::styling::AnsiColor::Yellow
+				.on_default()
+				.bold(),
+		)
+		.literal(clap::builder::styling::AnsiColor::Green.on_default())
+		.invalid(clap::builder::styling::AnsiColor::Red.on_default().bold())
+		.error(clap::builder::styling::AnsiColor::Red.on_default().bold())
+		.valid(clap::builder::styling::AnsiColor::Green.on_default().bold())
+		.placeholder(clap::builder::styling::AnsiColor::White.on_default())
 }
