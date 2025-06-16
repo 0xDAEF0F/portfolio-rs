@@ -21,8 +21,7 @@ nestruct::flatten! {
 	}
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+async fn fetch_top_memecoins(count: usize) -> Result<Vec<Coins>> {
 	// load api key from .env
 	let api_key = dotenvy::var("COINMARKETCAP_API_KEY")?;
 
@@ -30,27 +29,36 @@ async fn main() -> Result<()> {
 	let client = reqwest::Client::new();
 	let response = client
 		.get("https://pro-api.coinmarketcap.com/v1/cryptocurrency/category")
-		.query(&[("id", "6051a82566fc1b42617d6dc6")])
+		.query(&[
+			("id", "6051a82566fc1b42617d6dc6"),
+			("limit", &count.to_string()),
+		])
 		.header("x-cmc_pro_api_key", api_key)
 		.send()
 		.await?;
 
 	let api_response: ApiResponse = response.json().await?;
 
-	// sort by market cap and take top 10
-	let mut coins = api_response.data.coins;
-	coins.sort_by(|a, b| {
-		let a_cap = a.quote.usd.market_cap.unwrap_or_default();
-		let b_cap = b.quote.usd.market_cap.unwrap_or_default();
-		b_cap.partial_cmp(&a_cap).unwrap()
-	});
+	// filter out coins without market cap and take requested count
+	let coins_with_market_cap: Vec<_> = api_response
+		.data
+		.coins
+		.into_iter()
+		.filter(|coin| coin.quote.usd.market_cap.is_some())
+		.collect();
 
-	let top_10: Vec<_> = coins.into_iter().take(15).collect();
+	// they should already be sorted by market cap from the api
+	Ok(coins_with_market_cap)
+}
 
-	println!("Top 15 Meme Tokens by Market Cap:");
+#[tokio::main]
+async fn main() -> Result<()> {
+	let coins = fetch_top_memecoins(15).await?;
+
+	println!("Top {} Meme Tokens by Market Cap:", coins.len());
 	println!("{:-<80}", "");
 
-	for (i, coin) in top_10.iter().enumerate() {
+	for (i, coin) in coins.iter().enumerate() {
 		let usd = &coin.quote.usd;
 		println!("{}. {} ({})", i + 1, coin.name, coin.symbol);
 		if let Some(market_cap) = usd.market_cap {
