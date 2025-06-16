@@ -1,7 +1,7 @@
 use anyhow::Result;
 
 nestruct::flatten! {
-	#[derive(Debug, serde::Deserialize)]
+	#[derive(Debug, serde::Deserialize, Clone)]
 	ApiResponse {
 		data: {
 			coins: [{
