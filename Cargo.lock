@@ -653,6 +653,7 @@ dependencies = [
  "hyperliquid_rust_sdk",
  "iter_tools",
  "nestruct",
+ "phf",
  "pretty-table",
  "reqwest 0.12.20",
  "serde",
