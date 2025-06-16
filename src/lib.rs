@@ -1,3 +1,4 @@
+pub mod coinmarketcap;
 mod utils;
 
 use anyhow::{Context, Result};
